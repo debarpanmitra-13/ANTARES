@@ -1,5 +1,5 @@
 #NODE
-
+import random
 from sensors import SensorSuite
 
 
@@ -30,7 +30,7 @@ class Node:
         # AI Decision
         # -------------------------------
 
-        self.confidence = 0.0
+        self._confidence = 0.0
 
         self.status = "Normal"
 
@@ -47,6 +47,9 @@ class Node:
         self.trust_score = 1.0
 
         self.active = True
+
+        self.reliability_score = random.uniform(0.65, 1.0)
+        self.collective_confidence = 0.0
 
     # ------------------------------------------------
 
@@ -70,11 +73,11 @@ class Node:
 
     def update_status(self):
 
-        if self.confidence >= 0.60:
+        if self._confidence >= 0.60:
 
             self.status = "Verified"
 
-        elif self.confidence >= 0.30:
+        elif self._confidence >= 0.30:
 
             self.status = "Suspicious"
 
@@ -90,7 +93,7 @@ class Node:
         with neighbouring phones.
         """
 
-        return self.confidence
+        return self._confidence
 
     # ------------------------------------------------
 
@@ -99,8 +102,8 @@ class Node:
         Receive neighbour confidence.
         """
 
-        self.confidence = (
-            self.confidence +
+        self._confidence = (
+            self._confidence +
             score
         ) / 2
 
@@ -110,7 +113,7 @@ class Node:
 
     def reset(self):
 
-        self.confidence = 0.0
+        self._confidence = 0.0
 
         self.status = "Normal"
 
@@ -127,8 +130,8 @@ class Node:
                 round(self.y, 2)
             ),
 
-            "Confidence": round(
-                self.confidence,
+            "confidence": round(
+                self._confidence,
                 2
             ),
 
