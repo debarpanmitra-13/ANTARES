@@ -148,14 +148,20 @@ st.divider()
 # DASHBOARD
 # -------------------------------------------------
 
-left=st.container()
+left, right = st.columns([3.8, 1.4])
 
 with left:
 
     st.markdown("### 🛰 Live Simulation")
 
     simulation_placeholder = st.empty()
-    
+
+
+with right:
+
+    st.markdown("### 📊 AI Network Statistics")
+
+    stats_placeholder = st.empty()
     # -------------------------------------------------
 # RUN LIVE SIMULATION
 # -------------------------------------------------
@@ -196,8 +202,47 @@ if generate_button or run_button:
             use_container_width=True
 
         )
+        nodes = data["nodes"]
+
+        avg_local = sum(
+        node.confidence for node in nodes
+        ) / len(nodes)
+
+        avg_collective = sum(
+        node.collective_confidence for node in nodes
+        ) / len(nodes)
+
+        verified = sum(
+        node.collective_confidence >= 0.70
+        for node in nodes
+        )
+
+        rejected = sum(
+        node.confidence >= 0.60
+        and node.collective_confidence < 0.50
+        for node in nodes
+        )
+
+        stats_placeholder.markdown(
+         f"""
+        ### Live AI State
+
+        **📱 Active Nodes:** {len(nodes)}
+
+        **🤖 Local AI Confidence:** {avg_local:.0%}
+
+        **🧠 Collective Confidence:** {avg_collective:.0%}
+
+        **🔴 Collectively Verified:** {verified}
+
+        **🟣 Rejected Signals:** {rejected}
+
+        **🔗 Mesh Links:** {data["links"]}
+        """
+        )
 
         time.sleep(0.25)
+
 else:
 
     st.info(
