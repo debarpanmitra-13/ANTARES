@@ -8,7 +8,7 @@ ROOT = os.path.abspath(
 
 sys.path.insert(0, ROOT)
 
-from simulation.simulation import Simulation
+from simulation import Simulation
 
 
 TRIALS = 20
