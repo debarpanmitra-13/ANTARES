@@ -1,12 +1,10 @@
-#SENSORS
-
 import random
+
+from core.sensing.feature_extractor import FeatureExtractor
+from core.intelligence.inference import HazardInference
 
 
 class SensorSuite:
-    """
-    Simulates the sensors available on a smartphone.
-    """
 
     def __init__(self):
 
@@ -16,56 +14,64 @@ class SensorSuite:
         self.barometer = 0.0
         self.gps = (0, 0)
 
-    def update(self, x, y, hazard):
+        self._confidence = 0.0
 
-        """
-        Generate simulated sensor readings.
-        """
+        self.inference = HazardInference()
+
+
+    def update(self, x, y, hazard):
 
         self.gps = (x, y)
 
-        confidence = hazard.confidence(x, y)
+        severity = hazard.confidence(x, y)
 
-        # Simulated sensor readings
+        self.accelerometer = max(
+            0,
+            random.gauss(0.6 + 1.8 * severity, 0.55)
+        )
 
-        self.microphone = confidence + random.uniform(-0.08, 0.08)
+        self.gyroscope = max(
+            0,
+            random.gauss(0.5 + 1.3 * severity, 0.45)
+        )
 
-        self.accelerometer = confidence + random.uniform(-0.05, 0.05)
+        self.microphone = max(
+            0,
+            random.gauss(0.7 + 1.8 * severity, 0.65)
+        )
 
-        self.gyroscope = confidence + random.uniform(-0.05, 0.05)
+        self.barometer = max(
+            0,
+            random.gauss(0.4 + 1.0 * severity, 0.35)
+        )
 
-        self.barometer = confidence + random.uniform(-0.04, 0.04)
+        sensor_values = {
+            "acceleration_variance": self.accelerometer,
+            "gyro_variance": self.gyroscope,
+            "acoustic_energy": self.microphone,
+            "pressure_change": self.barometer
+        }
 
-        self.microphone = max(0, min(1, self.microphone))
-        self.accelerometer = max(0, min(1, self.accelerometer))
-        self.gyroscope = max(0, min(1, self.gyroscope))
-        self.barometer = max(0, min(1, self.barometer))
+        features = FeatureExtractor.extract(sensor_values)
+
+        self._confidence = self.inference.predict(features)
+
 
     def confidence(self):
-        """
-        Fuse all sensor readings into one confidence score.
-        """
 
-        values = [
-            self.microphone,
-            self.accelerometer,
-            self.gyroscope,
-            self.barometer
-        ]
+        return self._confidence
 
-        return sum(values) / len(values)
 
     def readings(self):
 
         return {
-
             "Microphone": round(self.microphone, 2),
-
             "Accelerometer": round(self.accelerometer, 2),
-
             "Gyroscope": round(self.gyroscope, 2),
-
             "Barometer": round(self.barometer, 2),
-
-            "GPS": self.gps
+            "GPS": self.gps,
+            "AI Confidence": round(self._confidence, 2)
         }
+    
+
+    
