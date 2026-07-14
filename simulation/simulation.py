@@ -1,5 +1,5 @@
 import random
-
+from core.consensus.weighted_consensus import WeightedConsensus
 from node import Node
 from network import MeshNetwork
 from hazards import Hazard
@@ -41,6 +41,7 @@ class Simulation:
         self.consensus = ConsensusEngine(
             consensus_threshold
         )
+        self.weighted_consensus = WeightedConsensus()
 
         self.visualizer = Visualizer()
 
@@ -146,41 +147,47 @@ class Simulation:
         if self.hazard is None:
             return
 
+        # Smooth directional drift
+        self.dx += random.uniform(-0.10, 0.10)
+        self.dy += random.uniform(-0.10, 0.10)
 
-        self.hazard.x += self.dx
+        # Limit speed
+        self.dx = max(-0.65, min(0.65, self.dx))
+        self.dy = max(-0.65, min(0.65, self.dy))
 
-        self.hazard.y += self.dy
+        # Prevent movement becoming too slow
+        if abs(self.dx) < 0.18:
+            self.dx = 0.18 if self.dx >= 0 else -0.18
 
+        if abs(self.dy) < 0.18:
+            self.dy = 0.18 if self.dy >= 0 else -0.18
 
-        # bounce from boundaries
-
-       # Maximum expansion
-        MAX_RADIUS = 5.5
-
-        if self.hazard.radius < MAX_RADIUS:
-            self.hazard.radius += 0.05
-
-        # Bounce before touching the boundary
-        margin = self.hazard.radius + 0.5
-
-        if self.hazard.x <= margin or self.hazard.x >= self.width - margin:
-            self.dx *= -1
-
-        if self.hazard.y <= margin or self.hazard.y >= self.height - margin:
-            self.dy *= -1
-
-        # Move hazard
+        # Move once
         self.hazard.x += self.dx
         self.hazard.y += self.dy
 
-        # expanding danger zone
+        # Keep hazard centre moving across the world
+        margin = 1.5
 
-        if self.hazard.radius < 5.5:
+        if self.hazard.x <= margin:
+         self.hazard.x = margin
+         self.dx = abs(self.dx)
 
-            self.hazard.radius += 0.05
-            # ------------------------------------------------
-    # SENSOR UPDATE
-    # ------------------------------------------------
+        elif self.hazard.x >= self.width - margin:
+         self.hazard.x = self.width - margin
+         self.dx = -abs(self.dx)
+
+        if self.hazard.y <= margin:
+         self.hazard.y = margin
+         self.dy = abs(self.dy)
+
+        elif self.hazard.y >= self.height - margin:
+         self.hazard.y = self.height - margin
+         self.dy = -abs(self.dy)
+
+        # Slow hazard-zone expansion
+        if self.hazard.radius < 4.5:
+         self.hazard.radius += 0.025
 
     def sensing_phase(self):
 
@@ -260,8 +267,8 @@ class Simulation:
         )
 
 
-        self.network.broadcast(
-            self.nodes
+        self.weighted_consensus.update(
+        self.nodes
         )
 
 
