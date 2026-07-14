@@ -1,319 +1,188 @@
-import random
-from core.consensus.weighted_consensus import WeightedConsensus
-from node import Node
-from network import MeshNetwork
-from hazards import Hazard
-from consensus import ConsensusEngine
-from visualization import Visualizer
+import matplotlib.pyplot as plt
 
 
-class Simulation:
+class Visualizer:
 
-    def __init__(
-        self,
-        num_nodes=50,
-        communication_range=5,
-        consensus_threshold=0.70,
-        hazard_type="Landslide"
-    ):
+    def __init__(self):
 
-        self.num_nodes = num_nodes
-
-        self.communication_range = communication_range
-
-        self.consensus_threshold = consensus_threshold
-
-        self.hazard_type = hazard_type
+        self.fig = None
+        self.ax = None
 
 
-        # Simulation world
+    def draw(self, nodes, hazard, network_stats):
 
-        self.width = 20
-        self.height = 20
-
-
-        self.nodes = []
-
-        self.network = MeshNetwork(
-            communication_range
+        self.fig, self.ax = plt.subplots(
+            figsize=(8.4, 6.2)
         )
 
-        self.consensus = ConsensusEngine(
-            consensus_threshold
-        )
-        self.weighted_consensus = WeightedConsensus()
-
-        self.visualizer = Visualizer()
+        ax = self.ax
 
 
-        self.hazard = None
+        # --------------------------------
+        # COMMUNICATION LINKS
+        # --------------------------------
+
+        for node in nodes:
+
+            for neighbour in node.neighbors:
+
+                if node.id < neighbour.id:
+
+                    ax.plot(
+                        [node.x, neighbour.x],
+                        [node.y, neighbour.y],
+                        color="#D3D3D3",
+                        linewidth=0.7,
+                        alpha=0.45,
+                        zorder=1
+                    )
 
 
-        # Animation variables
+        # --------------------------------
+        # AI + CONSENSUS NODE STATES
+        # --------------------------------
 
-        self.frame = 0
+        for node in nodes:
 
-        self.max_frames = 30
+            local = node.confidence
 
-        self.dx = 0.40
-
-        self.dy = 0.40
-
-        self.initialized = False
-
-
-
-    # ------------------------------------------------
-    # CREATE SMARTPHONE NODES
-    # ------------------------------------------------
-
-    def create_nodes(self):
-
-        self.nodes = []
-
-        for i in range(self.num_nodes):
-
-            x = random.uniform(
-                1,
-                self.width - 1
-            )
-
-            y = random.uniform(
-                1,
-                self.height - 1
-            )
-
-            self.nodes.append(
-                Node(i, x, y)
+            collective = getattr(
+                node,
+                "collective_confidence",
+                local
             )
 
 
+            # Normal
 
-    # ------------------------------------------------
-    # CREATE HAZARD
-    # ------------------------------------------------
+            # Collectively verified
+            if collective >= 0.70:
+                color = "#F44336"
 
-    def create_hazard(self):
+            # Local AI signal rejected by network
+            elif local >= 0.60 and collective < 0.50:
+                color = "#9C27B0"
 
-        self.hazard = Hazard(
-            hazard_type=self.hazard_type
-        )
+            # Local AI suspicious
+            elif local >= 0.60:
+                color = "#FFC107"
 
-        self.hazard.configure()
-
-        self.hazard.generate_random(
-            self.width,
-            self.height
-        )
-
-
-        # animation parameters
-
-        self.hazard.radius *= 0.5
+            # Normal
+            else:
+                color = "#2196F3"
 
 
-
-    # ------------------------------------------------
-    # INITIALIZE SIMULATION
-    # ------------------------------------------------
-
-    def initialize(self):
-
-        self.create_nodes()
-
-        self.create_hazard()
-
-
-        self.network.connect_nodes(
-            self.nodes
-        )
-
-
-        self.sensing_phase()
-
-
-        self.frame = 0
-
-        self.initialized = True
-
-
-
-    # ------------------------------------------------
-    # MOVE HAZARD
-    # ------------------------------------------------
-
-    def move_hazard(self):
-
-        if self.hazard is None:
-            return
-
-        # Smooth directional drift
-        self.dx += random.uniform(-0.10, 0.10)
-        self.dy += random.uniform(-0.10, 0.10)
-
-        # Limit speed
-        self.dx = max(-0.65, min(0.65, self.dx))
-        self.dy = max(-0.65, min(0.65, self.dy))
-
-        # Prevent movement becoming too slow
-        if abs(self.dx) < 0.18:
-            self.dx = 0.18 if self.dx >= 0 else -0.18
-
-        if abs(self.dy) < 0.18:
-            self.dy = 0.18 if self.dy >= 0 else -0.18
-
-        # Move once
-        self.hazard.x += self.dx
-        self.hazard.y += self.dy
-
-        # Keep hazard centre moving across the world
-        margin = 1.5
-
-        if self.hazard.x <= margin:
-         self.hazard.x = margin
-         self.dx = abs(self.dx)
-
-        elif self.hazard.x >= self.width - margin:
-         self.hazard.x = self.width - margin
-         self.dx = -abs(self.dx)
-
-        if self.hazard.y <= margin:
-         self.hazard.y = margin
-         self.dy = abs(self.dy)
-
-        elif self.hazard.y >= self.height - margin:
-         self.hazard.y = self.height - margin
-         self.dy = -abs(self.dy)
-
-        # Slow hazard-zone expansion
-        if self.hazard.radius < 4.5:
-         self.hazard.radius += 0.025
-
-    def sensing_phase(self):
-
-        for node in self.nodes:
-
-            node.sense(
-                self.hazard
+            ax.scatter(
+                node.x,
+                node.y,
+                s=120,
+                color=color,
+                edgecolors="black",
+                linewidth=0.5,
+                zorder=4
             )
 
 
-    # ------------------------------------------------
-    # CONSENSUS UPDATE
-    # ------------------------------------------------
+        # --------------------------------
+        # HAZARD
+        # --------------------------------
 
-    def consensus_phase(self):
+        radius = min(hazard.radius, 6)
 
-        self.consensus.average_consensus(
-            self.nodes
+        circle = plt.Circle(
+            (hazard.x, hazard.y),
+            radius,
+            fill=False,
+            color="red",
+            linewidth=2,
+            linestyle="--",
+            alpha=0.85
+        )
+
+        ax.add_patch(circle)
+
+
+        ax.scatter(
+            hazard.x,
+            hazard.y,
+            marker="*",
+            s=420,
+            color="red",
+            edgecolors="black",
+            linewidth=1,
+            zorder=6
         )
 
 
-        verified, suspicious = (
-            self.consensus.verify_nodes(
-                self.nodes
-            )
+        # --------------------------------
+        # LEGEND
+        # --------------------------------
+
+        ax.scatter(
+            [], [],
+            s=80,
+            color="#2196F3",
+            label="Normal"
+        )
+
+        ax.scatter(
+            [], [],
+            s=80,
+            color="#FFC107",
+            label="Local AI Suspicious"
+        )
+
+        ax.scatter(
+            [], [],
+            s=80,
+            color="#F44336",
+            label="Collectively Verified"
+        )
+
+        ax.scatter(
+            [], [],
+            s=80,
+            color="#9C27B0",
+            label="Isolated Signal Rejected"
+        )
+
+        ax.scatter(
+            [], [],
+            marker="*",
+            s=180,
+            color="red",
+            label="Hazard"
         )
 
 
-        confidence = (
-            self.consensus.global_confidence(
-                self.nodes
-            )
+        ax.legend(
+            loc="upper right",
+            frameon=True,
+            fontsize=8
         )
 
 
-        status = (
-            self.consensus.network_status(
-                confidence
-            )
+        # --------------------------------
+        # LAYOUT
+        # --------------------------------
+
+        ax.set_title(
+            "ANTARES Distributed AI Network",
+            fontsize=15,
+            fontweight="bold",
+            pad=12
         )
 
+        ax.set_xlim(0, 20)
+        ax.set_ylim(0, 20)
 
-        return (
-            verified,
-            suspicious,
-            confidence,
-            status
-        )
+        ax.set_aspect("auto")
 
+        ax.set_xticks([])
+        ax.set_yticks([])
 
+        ax.grid(False)
 
-    # ------------------------------------------------
-    # SINGLE ANIMATION STEP
-    # ------------------------------------------------
+        plt.tight_layout()
 
-    def step(self):
-
-        if not self.initialize:
-
-            self.initialize()
-
-
-        # 1. Move hazard
-
-        self.move_hazard()
-
-
-        # 2. Update sensors
-
-        self.sensing_phase()
-
-
-        # 3. Update communication network
-
-        self.network.connect_nodes(
-            self.nodes
-        )
-
-
-        self.weighted_consensus.update(
-        self.nodes
-        )
-
-
-        # 4. Run consensus
-
-        verified, suspicious, confidence, status = (
-            self.consensus_phase()
-        )
-
-
-        self.frame += 1
-
-
-        return {
-
-            "nodes": self.nodes,
-
-            "hazard": self.hazard,
-
-            "verified": verified,
-
-            "suspicious": suspicious,
-
-            "confidence": confidence,
-
-            "status": status,
-
-            "links": self.network.statistics()["links"]
-
-        }
-
-
-
-    # ------------------------------------------------
-    # VISUALIZATION FRAME
-    # ------------------------------------------------
-
-    def get_figure(self):
-
-        return self.visualizer.draw(
-
-            self.nodes,
-
-            self.hazard,
-
-            self.network.statistics()
-
-        )
+        return self.fig
