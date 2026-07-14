@@ -6,11 +6,9 @@ ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../..")
 )
 
-SIMULATION_DIR = os.path.join(ROOT, "simulation")
-
 sys.path.insert(0, ROOT)
-sys.path.insert(0, SIMULATION_DIR)
-from simulation import Simulation
+
+from simulation.simulation import Simulation
 
 
 TRIALS = 20
