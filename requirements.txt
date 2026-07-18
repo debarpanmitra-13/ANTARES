@@ -1,1 +1,9 @@
-requirements
+numpy
+pandas
+matplotlib
+plotly
+streamlit
+scikit-learn
+joblib
+networkx
+scipy
